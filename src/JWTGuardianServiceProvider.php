@@ -32,10 +32,11 @@ class JWTGuardianServiceProvider extends ServiceProvider
         $path = realpath(__DIR__ . '/../config/jwt-guardian.php');
         $this->mergeConfigFrom($path, 'jwt-guardian');
 
-        $this->app->mi([
-            'assign.guard' => AssignGuard::class,
+        $this->app['router']->middleware([
+            'assign.guard', AssignGuard::class,
         ]);
 
+        $this->loadRoutesFrom(__DIR__ . '/../routes/auth.php');
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'jwt-guardian');
 
         $this->app['auth']->extend('jwt-auth', function ($app, $name, array $config) {

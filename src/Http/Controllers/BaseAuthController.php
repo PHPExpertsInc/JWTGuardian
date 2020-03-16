@@ -30,7 +30,7 @@ abstract class BaseAuthController extends Controller
         return [$authGuardKey => $authGuard];
     }
 
-    protected function respondWithToken(string $token, int $ttl)
+    protected function respondWithToken(string $token, int $ttl = 300)
     {
         return new JsonResponse([
             'access_token' => $token,

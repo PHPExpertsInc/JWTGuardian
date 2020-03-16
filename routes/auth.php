@@ -8,23 +8,22 @@
 |
 */
 
-use App\Http\Controllers\Auth\PasswordAuthController;
+use PHPExperts\JWTGuardian\Http\Controllers\Auth\PasswordAuthController;
 
-/* @var \Illuminate\Routing\Router $router */
-$router->group(['prefix' => 'auth/members'], function () use ($router) {
-    $router->post('/register', [PasswordAuthController::class, 'register']);
-    $router->post('/login', [PasswordAuthController::class, 'login']);
-    $router->post('/logout', [PasswordAuthController::class, 'logout']);
+Route::group(['prefix' => 'auth/members'], function () {
+    Route::post('/register', [PasswordAuthController::class, 'register']);
+    Route::post('/login', [PasswordAuthController::class, 'login']);
+    Route::post('/logout', [PasswordAuthController::class, 'logout']);
 
-    $router->get('/token', [PasswordAuthController::class, 'verifyResetToken']);
-    $router->get('/token/{email}', [PasswordAuthController::class, 'requestResetToken']);
+    Route::get('/token', [PasswordAuthController::class, 'verifyResetToken']);
+    Route::get('/token/{email}', [PasswordAuthController::class, 'requestResetToken']);
 
-    $router->patch('/{memberId}/password', [PasswordAuthController::class, 'resetPassword']);
+    Route::patch('/{memberId}/password', [PasswordAuthController::class, 'resetPassword']);
 
-    $router->put('/{memberId}/password', [PasswordAuthController::class, 'updatePassword'])
+    Route::put('/{memberId}/password', [PasswordAuthController::class, 'updatePassword'])
         ->middleware('assign.guard:members');
 });
 
-$router->group(['prefix' => 'admin', 'middleware' => 'assign.guard:admins'], function () use ($router) {
+Route::group(['prefix' => 'admin', 'middleware' => 'assign.guard:admins'], function () {
     // would begin with /admin/whatever
 });

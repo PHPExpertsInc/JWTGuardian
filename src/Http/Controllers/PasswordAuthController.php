@@ -1,9 +1,8 @@
 <?php declare(strict_types=1);
 
-namespace App\Http\Controllers\Auth;
+namespace PHPExperts\JWTGuardian\Http\Controllers\Auth;
 
-use App\Models\Users\Member;
-use App\Models\Users\MemberSecurity;
+use App\Models\User;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -11,8 +10,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Foundation\Validation\ValidatesRequests;
 use InvalidArgumentException;
 use PHPExperts\JWTGuardian\Http\Controllers\BaseAuthController;
+use PHPExperts\JWTGuardian\JWTUser;
+use PHPExperts\JWTHelper\JWTHelper;
 use RuntimeException;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\JWT;
@@ -20,13 +22,37 @@ use Tymon\JWTAuth\JWTGuard;
 
 class PasswordAuthController extends BaseAuthController
 {
+    use ValidatesRequests;
+
+    public function login(Request $request)
+    {
+//        $this->validatesWith([
+//            'username' => ['required'],
+//            'password' => ['required'],
+//        ]);
+
+        $payload = $request->only('username', 'password');
+        $user = JWTUser::query()->where(['username' => $payload['username']])->first();
+
+        if (!$user || !$token = JWTHelper::login($user))
+        {
+            return new JsonResponse([
+                'error' => 'Invalid username or password',
+            ], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
+        return new JsonResponse([
+            'token' => $token,
+            'user'  => $user,
+        ]);
+    }
+
     public function register(Request $request)
     {
         list($authGuardKey => $authGuard) = $this->grabAuthGuard($request);
         dd($authGuardKey, $authGuard);
 
         $userKey = config('jwt-guardian.user_key');
-        /** @var Member $member */
         $member = static::query()->create([
             $userKey   => $request->$userKey,
             'password' => $request->password,
@@ -143,10 +169,10 @@ class PasswordAuthController extends BaseAuthController
         }
 
         // Note: The user is *guaranteed* to be logged in due to the JWT Auth Guard.
-        /** @var Member|null $member */
-        $member = Auth::user();
+        /** @var JWTUser|null $user */
+        $user = Auth::user();
 
-        if ($zuoraId !== $member->zuora_id) {
+        if ($zuoraId !== $user->zuora_id) {
             throw new AuthenticationException(<<<MSG
                 Your session has become corrupted (token/user mismatch).
                 Please clear your cache and try again.
@@ -158,12 +184,12 @@ class PasswordAuthController extends BaseAuthController
             'password_confirmation' => 'required|min:6',
         ]);
 
-        $token = $member->member_security->changePassword($request->input('password'));
+        $token = $user->password = $request->input('password');
 
         return $this->respondWithToken($token);
     }
 
-    protected function respondWithToken($token)
+    protected function respondWithToken(string $token, int $ttl = 300)
     {
         // tymon/jwt-auth's JWT mixin is -not- friendly to static analyzers.
         // Thus, we need to inform them via the $authGuard that JWT is a valid mixin.
@@ -173,7 +199,7 @@ class PasswordAuthController extends BaseAuthController
         return new JsonResponse([
             'access_token' => $token,
             'token_type'   => 'bearer',
-            'expires_in'   => $authGuard->factory()->getTTL(),
+            'expires_in'   => $authGuard->factory()->getTTL() ?? $ttl,
         ]);
     }
 }
