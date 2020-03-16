@@ -21,10 +21,12 @@
         }
     ],
     "require": {
-        "php": "^7.0",
+        "php": "^7.1",
         "ext-json": "*",
-        "illuminate/support": "^5.5",
-        "illuminate/http": "^5.5",
+        "illu"
+        "illuminate/auth": "^5.2|^6|^7",
+        "illuminate/support": "^5.5|^6|^7",
+        "illuminate/http": "^5.5|^6|^7",
         "tymon/jwt-auth": "1.*",
         "phpexperts/jwt-helper": "^0.6.1",
         "phpexperts/conciseuuid": "2.*"
