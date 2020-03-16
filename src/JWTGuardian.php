@@ -1,5 +1,17 @@
 <?php declare(strict_types=1);
 
+/**
+ * This file is part of JWT Guardian, a PHP Experts, Inc., Project.
+ *
+ * Copyright © 2020 PHP Experts, Inc.
+ * Author: Theodore R. Smith <theodore@phpexperts.pro>
+ *   GPG Fingerprint: 4BF8 2613 1C34 87AC D28F  2AD8 EB24 A91D D612 5690
+ *   https://www.phpexperts.pro/
+ *   https://github.com/PHPExpertsInc/JWTGuardian
+ *
+ * This file is licensed under the MIT License.
+ */
+
 namespace PHPExperts\JWTGuardian;
 
 use BadMethodCallException;
@@ -38,10 +50,6 @@ class JWTGuardian implements Guard
 
     /**
      * Create a new authentication guard.
-     *
-     * @param JWT          $jwt
-     * @param UserProvider $provider
-     * @param Request      $request
      */
     public function __construct(JWT $jwt, UserProvider $provider, Request $request)
     {
@@ -73,8 +81,6 @@ class JWTGuardian implements Guard
     /**
      * Log a user into the application without sessions or cookies.
      *
-     * @param array $credentials
-     *
      * @return bool
      */
     public function once(array $credentials = [])
@@ -91,8 +97,6 @@ class JWTGuardian implements Guard
     /**
      * Validate a user's credentials.
      *
-     * @param array $credentials
-     *
      * @return bool
      */
     public function validate(array $credentials = [])
@@ -103,8 +107,7 @@ class JWTGuardian implements Guard
     /**
      * Attempt to authenticate the user using the given credentials and return the token.
      *
-     * @param array $credentials
-     * @param bool  $login
+     * @param bool $login
      *
      * @return mixed
      */
@@ -121,8 +124,6 @@ class JWTGuardian implements Guard
 
     /**
      * Create a token for a user.
-     *
-     * @param JWTSubject $user
      *
      * @return string
      */
@@ -298,8 +299,6 @@ class JWTGuardian implements Guard
     /**
      * Set the user provider used by the guard.
      *
-     * @param \Illuminate\Contracts\Auth\UserProvider $provider
-     *
      * @return $this
      */
     public function setProvider(UserProvider $provider)
@@ -311,8 +310,6 @@ class JWTGuardian implements Guard
 
     /**
      * Set the current request instance.
-     *
-     * @param \Illuminate\Http\Request $request
      *
      * @return $this
      */

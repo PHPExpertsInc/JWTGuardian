@@ -1,7 +1,18 @@
 <?php declare(strict_types=1);
 
-return [
+/**
+ * This file is part of JWT Guardian, a PHP Experts, Inc., Project.
+ *
+ * Copyright © 2020 PHP Experts, Inc.
+ * Author: Theodore R. Smith <theodore@phpexperts.pro>
+ *   GPG Fingerprint: 4BF8 2613 1C34 87AC D28F  2AD8 EB24 A91D D612 5690
+ *   https://www.phpexperts.pro/
+ *   https://github.com/PHPExpertsInc/JWTGuardian
+ *
+ * This file is licensed under the MIT License.
+ */
 
+return [
     /*
     |---------------------------------------------------------------------------
     | Guardians
@@ -9,15 +20,20 @@ return [
     | Here, you should list your models for the various types of users you have.
     |
     */
+    // This is where you put your main site's URL for the reset token.
+    'platform_url' => env('PLATFORM_URL'),
+
+    // This is the table where your users are stored.
+    'users_table' => 'users',
+
     // This is the column in your User models that act as your username.
     // Examples: 'email', 'username'
     'user_key' => 'email',
 
+    // Change to your own classes!!
     'guardians' => [
-
         'users'  => 'App\Models\User',
-        'admins' => 'App\Models\Admin',
-
+        //'admins' => 'App\Models\Admin',
     ],
 
     // Tymon's JWTAuth config.
@@ -56,7 +72,6 @@ return [
     */
 
     'keys' => [
-
         /*
         |--------------------------------------------------------------------------
         | Public Key
@@ -93,7 +108,6 @@ return [
         */
 
         'passphrase' => env('JWT_PASSPHRASE'),
-
     ],
 
     /*
@@ -276,7 +290,6 @@ return [
     */
 
     'providers' => [
-
         /*
         |--------------------------------------------------------------------------
         | JWT Provider

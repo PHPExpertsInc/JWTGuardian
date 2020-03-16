@@ -1,24 +1,37 @@
 <?php declare(strict_types=1);
 
+/**
+ * This file is part of JWT Guardian, a PHP Experts, Inc., Project.
+ *
+ * Copyright © 2020 PHP Experts, Inc.
+ * Author: Theodore R. Smith <theodore@phpexperts.pro>
+ *   GPG Fingerprint: 4BF8 2613 1C34 87AC D28F  2AD8 EB24 A91D D612 5690
+ *   https://www.phpexperts.pro/
+ *   https://github.com/PHPExpertsInc/JWTGuardian
+ *
+ * This file is licensed under the MIT License.
+ */
+
 namespace PHPExperts\JWTGuardian\Http\Controllers\Auth;
 
 use App\Models\User;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Foundation\Validation\ValidatesRequests;
 use InvalidArgumentException;
+use PHPExperts\JWTGuardian\Exceptions\InvalidResetTokenException;
 use PHPExperts\JWTGuardian\Http\Controllers\BaseAuthController;
+use PHPExperts\JWTGuardian\JWTResetToken;
 use PHPExperts\JWTGuardian\JWTUser;
+use PHPExperts\JWTGuardian\Mail\PasswordResetEmail;
 use PHPExperts\JWTHelper\JWTHelper;
 use RuntimeException;
-use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\JWT;
-use Tymon\JWTAuth\JWTGuard;
 
 class PasswordAuthController extends BaseAuthController
 {
@@ -26,16 +39,23 @@ class PasswordAuthController extends BaseAuthController
 
     public function login(Request $request)
     {
-//        $this->validatesWith([
-//            'username' => ['required'],
-//            'password' => ['required'],
-//        ]);
-
+        try {
+            $this->validate($request, [
+                'username' => ['required'],
+                'password' => ['required'],
+            ]);
+        } catch (ValidationException $e) {
+            return new JsonResponse([
+                'error' => 'username and password are required.'
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
         $payload = $request->only('username', 'password');
         $user = JWTUser::query()->where(['username' => $payload['username']])->first();
 
-        if (!$user || !$token = JWTHelper::login($user))
-        {
+        $password = $user->password;
+        $correctPassword = password_verify($payload['password'], $user->password);
+
+        if (!$user || !$correctPassword || !$token = JWTHelper::login($user)) {
             return new JsonResponse([
                 'error' => 'Invalid username or password',
             ], JsonResponse::HTTP_UNAUTHORIZED);
@@ -50,7 +70,7 @@ class PasswordAuthController extends BaseAuthController
     public function register(Request $request)
     {
         list($authGuardKey => $authGuard) = $this->grabAuthGuard($request);
-        dd($authGuardKey, $authGuard);
+        dd([$authGuardKey, $authGuard]);
 
         $userKey = config('jwt-guardian.user_key');
         $member = static::query()->create([
@@ -66,8 +86,6 @@ class PasswordAuthController extends BaseAuthController
     /**
      * Generates and emails a password reset token.
      *
-     * @param Request $request
-     * @return JsonResponse
      * @throws ValidationException
      */
     public function requestResetToken(Request $request): JsonResponse
@@ -78,9 +96,9 @@ class PasswordAuthController extends BaseAuthController
         $email = $request->input('email');
 
         // 0. Ensure that the requested email is registered.
-        /** @var Member|null $member */
-        $member = Member::query()->where(['email' => strtolower($email)])->first();
-        if (!$member) {
+        /** @var JWTUser|null $user */
+        $user = (new JWTUser)->query()->where([config('jwt-auth.user_key') => strtolower($email)])->first();
+        if (!$user) {
             // Due to very real security concerns, we always want to return this message.
             // This is so that hackers cannot determine what is a valid email or not, by
             // sending brute force requests.
@@ -90,12 +108,12 @@ class PasswordAuthController extends BaseAuthController
         }
 
         // 1. Generate the Reset Token.
-        $resetToken = MemberSecurity::generateResetToken($member->id);
-        $resetURL = env('PLATFORM_URL') . "/reset-password/{$resetToken}";
+        $resetToken = JWTResetToken::generate($user->id);
+        $resetURL = config('jwt-guardian.platform_url') . "/reset-password/{$resetToken}";
 
         // 2. Send the email.
         Mail::to($email)->send(new PasswordResetEmail(
-            $member->first_name,
+            $user->first_name,
             $resetURL
         ));
 
@@ -107,34 +125,38 @@ class PasswordAuthController extends BaseAuthController
     /**
      * Verifies if a user token is valid or not.
      *
-     * @param string $token
      * @return JsonResponse
      */
-    public function verifyResetToken(string $token)
+    public function verifyResetToken(string $userKey, string $token)
     {
-        $payload = MemberSecurity::ensureValidToken($token);
+        try {
+            JWTResetToken::verify($userKey, $resetToken);
+        } catch (InvalidResetTokenException $e) {
+            return new JsonResponse([
+                'error' => 'Invalid password reset token.',
+            ], JsonResponse::HTTP_UNAUTHORIZED);
+        }
 
-        return new JsonResponse($payload);
+        return new JsonResponse([
+            'verified' => true,
+        ]);
     }
 
     /**
      * Updates a user's password if they provided a reset token.
      *
-     * @param  Request             $request
-     * @param  string              $zuoraId
-     * @return JsonResponse
      * @throws ValidationException
      */
-    public function resetPassword(Request $request, string $zuoraId): JsonResponse
+    public function resetPassword(Request $request, string $userKey): JsonResponse
     {
         if ($request->isMethod('PATCH')) {
             throw new RuntimeException('PATCH call has not been implemented');
         }
 
         try {
-            /** @var Member $member */
-            $member = Member::query()
-                ->where(['zuora_id' => $zuoraId])->firstOrFail();
+            /** @var JWTUser $member */
+            $member = (new JWTUser)->query()
+                ->where([config('jwt-auth.user_key') => $userKey])->firstOrFail();
         } catch (ModelNotFoundException $e) {
             throw new InvalidArgumentException('Invalid member ID');
         }
@@ -148,7 +170,7 @@ class PasswordAuthController extends BaseAuthController
         // Make sure that the token is valid.
         $resetToken = $request->input('reset_token');
 
-        $token = MemberSecurity::resetPassword($member->email, $resetToken, $request->input('password'));
+        $token = JWTUser::resetPassword($userKey, $resetToken, $request->input('password'));
 
         return $this->respondWithToken($token);
     }
@@ -156,13 +178,13 @@ class PasswordAuthController extends BaseAuthController
     /**
      * Updates a user's password.
      *
-     * @param  Request             $request
-     * @param  string              $zuoraId
+     * @param Request $request
+     * @param string  $userKey
      * @return JsonResponse
      * @throws AuthenticationException
      * @throws ValidationException
      */
-    public function changePassword(Request $request, string $zuoraId): JsonResponse
+    public function changePassword(Request $request, string $userKey): JsonResponse
     {
         if ($request->isMethod('put')) {
             throw new RuntimeException('PUT call has not been implemented');
@@ -171,12 +193,13 @@ class PasswordAuthController extends BaseAuthController
         // Note: The user is *guaranteed* to be logged in due to the JWT Auth Guard.
         /** @var JWTUser|null $user */
         $user = Auth::user();
+        $userKey = config('jwt-guardian.user_key');
 
-        if ($zuoraId !== $user->zuora_id) {
-            throw new AuthenticationException(<<<MSG
-                Your session has become corrupted (token/user mismatch).
-                Please clear your cache and try again.
-            MSG);
+        if ($userKey !== $user->$userKey) {
+            throw new AuthenticationException(
+                'Your session has become corrupted (token/user mismatch). ' .
+                'Please clear your cache and try again.'
+            );
         }
 
         $this->validate($request, [
@@ -194,7 +217,7 @@ class PasswordAuthController extends BaseAuthController
         // tymon/jwt-auth's JWT mixin is -not- friendly to static analyzers.
         // Thus, we need to inform them via the $authGuard that JWT is a valid mixin.
         /** @var JWT $authGuard */
-        $authGuard = $this->authGuard;
+        [$authGuardKey => $authGuard] = $this->grabAuthGuard($request);
 
         return new JsonResponse([
             'access_token' => $token,

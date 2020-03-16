@@ -1,11 +1,21 @@
 <?php declare(strict_types=1);
 
+/**
+ * This file is part of JWT Guardian, a PHP Experts, Inc., Project.
+ *
+ * Copyright © 2020 PHP Experts, Inc.
+ * Author: Theodore R. Smith <theodore@phpexperts.pro>
+ *   GPG Fingerprint: 4BF8 2613 1C34 87AC D28F  2AD8 EB24 A91D D612 5690
+ *   https://www.phpexperts.pro/
+ *   https://github.com/PHPExpertsInc/JWTGuardian
+ *
+ * This file is licensed under the MIT License.
+ */
+
 namespace Tests\Feature\Members;
 
 use App\Mail\PasswordResetEmail;
-use Illuminate\Foundation\Testing\TestResponse;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Testing\Fakes\MailFake;
@@ -37,7 +47,7 @@ class ResetPasswordTest extends TestCase
         $checkTheAPIRoute = function () {
             // Use the native `json()` method, because `patch()` will include the X-API-Key,
             // which would invalidate this test.
-            $response = $this->json('POST', "/auth/members/tokens", [
+            $response = $this->json('POST', '/auth/members/tokens', [
                 'email' => self::EMAIL,
             ]);
             self::assertEquals(JsonResponse::HTTP_ACCEPTED, $response->getStatusCode());
@@ -127,13 +137,3 @@ class ResetPasswordTest extends TestCase
         self::assertEquals('The password confirmation does not match.', $decoded['errors']['password'][0]);
     }
 }
-
-
-
-
-
-
-
-
-
-

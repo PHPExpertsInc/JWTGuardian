@@ -1,5 +1,17 @@
 <?php declare(strict_types=1);
 
+/**
+ * This file is part of JWT Guardian, a PHP Experts, Inc., Project.
+ *
+ * Copyright © 2020 PHP Experts, Inc.
+ * Author: Theodore R. Smith <theodore@phpexperts.pro>
+ *   GPG Fingerprint: 4BF8 2613 1C34 87AC D28F  2AD8 EB24 A91D D612 5690
+ *   https://www.phpexperts.pro/
+ *   https://github.com/PHPExpertsInc/JWTGuardian
+ *
+ * This file is licensed under the MIT License.
+ */
+
 namespace App\Models\Users;
 
 use App\Models\USLS\DTOs\Response\VerifiedRefreshTokenDTO;
@@ -85,8 +97,6 @@ class MemberSecurity extends Model
 
     /**
      * As of now there are no update validation rules for an order as it cannot be updated.
-     *
-     * @return array
      */
     public static function updateValidationRules(): array
     {
@@ -95,9 +105,6 @@ class MemberSecurity extends Model
 
     /**
      * Generates a password reset token.
-     *
-     * @param  int    $memberId
-     * @return string
      */
     public static function generateResetToken(int $memberId): string
     {
@@ -113,8 +120,9 @@ class MemberSecurity extends Model
 
     /**
      * Check whether the token is valid or not.
-     * @param  string      $token
-     * @param  string|null $forEmail
+     *
+     * @param string $token
+     *
      * @return
      */
     public static function ensureValidToken(?string $token, string $forEmail = null): VerifiedRefreshTokenDTO
@@ -182,9 +190,7 @@ class MemberSecurity extends Model
     {
         $verifiedDTO = MemberSecurity::ensureValidToken($resetToken, $email);
         if ($email !== $verifiedDTO->email) {
-            throw new InvalidArgumentException(
-                'The email used for resetting the password doesn\'t match the member\'s email'
-            );
+            throw new InvalidArgumentException('The email used for resetting the password doesn\'t match the member\'s email');
         }
 
         try {
@@ -192,9 +198,9 @@ class MemberSecurity extends Model
                 ->whereHas('member', function (EloquentBuilder $query) use ($email, $verifiedDTO) {
                     $query->where([
                         'zuora_id'    => $verifiedDTO->user_id,
-                        'email' => $email,
+                        'email'       => $email,
                     ]);
-            })->firstOrFail();
+                })->firstOrFail();
         } catch (ModelNotFoundException $e) {
             throw new InvalidArgumentException('We were unable to find a matching account for this security token.');
         }

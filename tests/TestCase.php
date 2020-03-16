@@ -1,9 +1,9 @@
 <?php declare(strict_types=1);
 
 /**
- * This file is part of JWTGuardian, a PHP Experts, Inc., Project.
+ * This file is part of JWT Guardian, a PHP Experts, Inc., Project.
  *
- * Copyright © 2019 PHP Experts, Inc.
+ * Copyright © 2020 PHP Experts, Inc.
  * Author: Theodore R. Smith <theodore@phpexperts.pro>
  *   GPG Fingerprint: 4BF8 2613 1C34 87AC D28F  2AD8 EB24 A91D D612 5690
  *   https://www.phpexperts.pro/
@@ -15,14 +15,13 @@
 namespace PHPExperts\JWTGuardian\Tests;
 
 use PHPUnit\Framework\TestCase as BaseTestCase;
+use PHPExperts\JWTGuardian\Tests\CreatesApplication;
 
 abstract class TestCase extends BaseTestCase
 {
     /**
      * Checks if phpunit was togged in debug mode o rnot.
      * See https://stackoverflow.com/a/12612733/430062.
-     *
-     * @return bool
      */
     public static function isDebugOn(): bool
     {

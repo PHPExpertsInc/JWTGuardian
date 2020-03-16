@@ -1,19 +1,19 @@
 <?php declare(strict_types=1);
 
 /**
- * This file is part of Covid Tracker, a Covid Research Project.
+ * This file is part of JWT Guardian, a PHP Experts, Inc., Project.
  *
- * Copyright © 2020 Theodore R. Smith <theodore@phpexperts.pro>
+ * Copyright © 2020 PHP Experts, Inc.
+ * Author: Theodore R. Smith <theodore@phpexperts.pro>
  *   GPG Fingerprint: 4BF8 2613 1C34 87AC D28F  2AD8 EB24 A91D D612 5690
  *   https://www.phpexperts.pro/
- *   https://github.com/PHPExpertsInc/Skeleton
+ *   https://github.com/PHPExpertsInc/JWTGuardian
  *
  * This file is licensed under the MIT License.
  */
 
 namespace PHPExperts\JWTGuardian;
 
-use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Hash;
 use PHPExperts\ConciseUuid\ConciseUuidAuthModel;
 use Tymon\JWTAuth\Contracts\JWTSubject;
@@ -33,9 +33,7 @@ class JWTUser extends ConciseUuidAuthModel implements JWTSubject
      *
      * @var array
      */
-    protected $fillable = [
-        'username', 'name', 'email', 'password',
-    ];
+    protected $guarded = [];
 
     /**
      * The attributes that should be hidden for arrays.
@@ -46,41 +44,30 @@ class JWTUser extends ConciseUuidAuthModel implements JWTSubject
         'password', 'remember_token',
     ];
 
+    public function __construct(array $attributes = [])
+    {
+        $this->setTable(config('jwt-guardian.users_table'));
+
+        parent::__construct($attributes);
+    }
+
     public function setPasswordAttribute(string $password)
     {
         $this->attributes['password'] = Hash::make($password);
     }
 
-    /**
-     * Returns the loggedIn user if present, else seeded UnknownUser.
-     *
-     * @return User
-     */
-    public static function currentUser(): self
-    {
-        /** @var User $currentUser */
-        $currentUser = Auth::user();
-
-        if (!$currentUser) {
-            $currentUser = self::query()->find(self::SYSTEM_USER_ID);
-        }
-
-        return $currentUser;
-    }
-
-    /**
-     * @return string
-     */
     public function getJWTIdentifier(): string
     {
         return $this->id;
     }
 
-    /**
-     * @return array
-     */
     public function getJWTCustomClaims(): array
     {
         return [];
+    }
+
+    public function resetPassword(string $userKey, string $resetToken, string $password)
+    {
+        JWTResetToken::verify($userKey, $resetToken);
     }
 }

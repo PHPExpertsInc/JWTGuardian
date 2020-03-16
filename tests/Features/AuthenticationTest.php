@@ -1,36 +1,62 @@
 <?php declare(strict_types=1);
 
-namespace Tests\Feature\Members;
+/**
+ * This file is part of JWT Guardian, a PHP Experts, Inc., Project.
+ *
+ * Copyright © 2020 PHP Experts, Inc.
+ * Author: Theodore R. Smith <theodore@phpexperts.pro>
+ *   GPG Fingerprint: 4BF8 2613 1C34 87AC D28F  2AD8 EB24 A91D D612 5690
+ *   https://www.phpexperts.pro/
+ *   https://github.com/PHPExpertsInc/JWTGuardian
+ *
+ * This file is licensed under the MIT License.
+ */
 
-use Illuminate\Foundation\Testing\TestResponse;
+namespace Tests\Features;
+
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use PHPExperts\ConciseUuid\ConciseUuid;
+use PHPExperts\JWTGuardian\Tests\TestCase;
 use PHPUnit\Framework\ExpectationFailedException;
 
 class AuthenticationTest extends TestCase
 {
-    public const MEMBER_ID = 14043903;
-    public const ZUORA_ID = '8a80c3326cab012b016dbb7413695ea1';
-    public const ALT_ZUORA_ID = '8a80c3326cab012b016d72e465dd49a2';
-    public const USERNAME = 'TX150002';
-    public const EMAIL = 'auth_tests@nousls.com';
-    public const PASSWORD = '123456';
+    /** @var string */
+    private $testUserId;
+
+    /** @var array */
+    private $userInfo;
 
     public function setUp(): void
     {
         parent::setUp();
 
-        // Always manually reset the password back to 'e10adc3949ba59abbe56e057f20f883e' (123456).
-        DB::table('members_security')
-            ->where(['id' => self::MEMBER_ID])
-            ->update(['password' => 'e10adc3949ba59abbe56e057f20f883e']);
+        $this->testUserId = ConciseUuid::generateNewId();
+
+        $this->userInfo = [
+            'id'       => $this->testUserId,
+            'username' => 'JWTGuardian',
+            'password' => Hash::make('JWTGuardian4Eva!'),
+        ];
+
+        DB::table('users')
+            ->insert($this->userInfo);
+    }
+
+    public function tearDown(): void
+    {
+        DB::table('users')
+            ->delete($this->testUserId);
+
+        parent::tearDown();
     }
 
     public function testCanLogin()
     {
-        // Hard-coded to the TX150002 user on QA, password 123456
-        $response = $this->login(self::USERNAME, self::PASSWORD);
+        $response = $this->login($this->userInfo['username'], $this->userInfo['password']);
         $decoded = $response->decodeResponseJson();
 
         return $decoded['access_token'];
@@ -38,7 +64,9 @@ class AuthenticationTest extends TestCase
 
     public function testCannotLogInWithBadCredentials()
     {
-        $response = $this->post('/auth/members/login', [
+        $this->markTestIncomplete();
+
+        $response = $this->post('/auth/users/login', [
             'username' => self::USERNAME,
             'password' => 'This is the wrong password!',
         ]);
@@ -51,6 +79,8 @@ class AuthenticationTest extends TestCase
 
     public function testCanUpdatePasswords()
     {
+        $this->markTestIncomplete();
+
         $this->login(self::USERNAME, self::PASSWORD);
         $jwtToken = $this->token;
 
@@ -58,7 +88,7 @@ class AuthenticationTest extends TestCase
         // Use the native `json()` method, because `patch()` will include the X-API-Key,
         // which would invalidate this test.
         $newPassword = self::PASSWORD . '1';
-        $response = $this->json('PATCH', "/auth/members/$zuoraId/password", [
+        $response = $this->json('PATCH', "/auth/users/$zuoraId/password", [
             'password'              => $newPassword,
             'password_confirmation' => $newPassword,
         ], [
@@ -81,6 +111,8 @@ class AuthenticationTest extends TestCase
     /** @testdox Cannot update another user's password */
     public function testCannotUpdateAnotherUsersPassword()
     {
+        $this->markTestIncomplete();
+
         $this->login(self::USERNAME, self::PASSWORD);
         $jwtToken = $this->token;
 
@@ -88,7 +120,7 @@ class AuthenticationTest extends TestCase
         // Use the native `json()` method, because `patch()` will include the X-API-Key,
         // which would invalidate this test.
         $newPassword = self::PASSWORD . '1';
-        $response = $this->json('PATCH', "/auth/members/$zuoraId/password", [
+        $response = $this->json('PATCH', "/auth/users/$zuoraId/password", [
             'password'              => $newPassword,
             'password_confirmation' => $newPassword,
         ], [
@@ -102,13 +134,15 @@ class AuthenticationTest extends TestCase
 
     public function testThePasswordConfirmationMustMatch()
     {
+        $this->markTestIncomplete();
+
         $this->login(self::USERNAME, self::PASSWORD);
         $jwtToken = $this->token;
 
         $zuoraId = self::ZUORA_ID;
         // Use the native `json()` method, because `patch()` will include the X-API-Key,
         // which would invalidate this test.
-        $response = $this->json('PATCH', "/auth/members/$zuoraId/password", [
+        $response = $this->json('PATCH', "/auth/users/$zuoraId/password", [
             'password'              => self::PASSWORD,
             'password_confirmation' => self::PASSWORD . 'doesnt match',
         ], [
